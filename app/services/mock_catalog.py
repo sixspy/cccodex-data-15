@@ -12,12 +12,22 @@ CATALOGS = {
         {"sku": "B-101", "title": "泵站运行日报"},
         {"sku": "B-102", "title": "雨污分流抽检单"},
     ],
+    # 空目录：开跑一条都取不到，用于演练急件“落空”（两种落空口径都以此验证）。
+    "/mock/catalog/empty": [],
+    # 来源不可用：页面 404，但站内仍登记了应收条目，用于演练“来源取不到 →
+    # 急件落空、条目全进候着区”的路径。
+    "/mock/catalog/flaky": [
+        {"sku": "F-001", "title": "供水抢修工单"},
+        {"sku": "F-002", "title": "管网压力异常单"},
+    ],
 }
+
+UNAVAILABLE_CATALOGS = {"/mock/catalog/flaky"}
 
 
 def render_catalog_page(path: str) -> str:
     items = CATALOGS.get(path)
-    if not items:
+    if items is None or path in UNAVAILABLE_CATALOGS:
         return _not_found(path)
     rows = "".join(
         f"<li data-sku='{escape(it['sku'])}'>{escape(it['title'])}</li>"

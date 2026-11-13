@@ -15,6 +15,8 @@ def app():
     application = create_app()
     application.config["DATABASE"] = path
     application.config["TESTING"] = True
+    # 后台日期钉死，避免测试跨日或受本机时区影响。
+    application.config["TODAY_OVERRIDE"] = "2026-11-13"
     with application.app_context():
         init_db(application)
     yield application

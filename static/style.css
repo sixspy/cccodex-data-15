@@ -33,3 +33,35 @@ code { font-size: 0.85em; }
 .flash .error { color: var(--err); }
 .grid-form { display: grid; gap: 0.75rem; grid-template-columns: 1fr 1fr auto; align-items: end; }
 @media (max-width: 720px) { .grid-form { grid-template-columns: 1fr; } }
+
+.navlink { color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+.quota-bar { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.5rem 0 0.75rem; }
+.chip { border: 1px solid #3a4556; border-radius: 999px; padding: 0.2rem 0.65rem; font-size: 0.85rem; color: var(--muted); }
+.chip strong { color: var(--text); }
+.chip.low strong { color: var(--err); }
+.chip.warn { border-color: #7a5a1e; color: #ffd27d; }
+.tag.rush { background: #5a2a1e; color: #ffb98a; }
+.tag.normal { background: #2a3545; }
+.tag.degrade { background: #5a4a1e; color: #ffe08a; }
+.tag.frozen { background: #2a2a5a; color: #b9c6ff; }
+.rush-fieldset { grid-column: 1 / -1; border: 1px solid #2a3545; border-radius: 6px; padding: 0.75rem 1rem; margin: 0; }
+.rush-fieldset legend { color: var(--muted); font-size: 0.85rem; padding: 0 0.35rem; }
+.inline { display: inline-flex; gap: 0.4rem; align-items: center; margin-right: 1rem; }
+.inline-form { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end; margin-top: 0.75rem; }
+.job-cards { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.job-card { border: 1px solid #2a3545; border-radius: 8px; padding: 0.85rem 1rem; background: #141c28; }
+.job-card.is-rush { border-color: #7a3a2a; }
+.job-card header { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
+.job-card .job-id { color: var(--muted); font-size: 0.85rem; }
+.job-meta { margin: 0.65rem 0 0.5rem; display: grid; gap: 0.35rem; }
+.job-meta div { display: flex; gap: 0.5rem; font-size: 0.88rem; }
+.job-meta dt { color: var(--muted); min-width: 5.5rem; }
+.job-meta dd { margin: 0; }
+.detail-meta div { font-size: 0.95rem; }
+.wait-seq { display: inline-block; margin: 0 0.35rem 0.2rem 0; padding: 0.1rem 0.4rem; border-radius: 4px; background: #23303f; font-size: 0.82rem; }
+.wait-seq.continued { opacity: 0.65; text-decoration: line-through; }
+.link-btn { padding: 0.45rem 0.6rem; border: 1px solid #3a4556; border-radius: 4px; color: var(--accent); text-decoration: none; }
+.quota-actions { display: flex; gap: 0.6rem; align-items: center; }
+.flash-li { font-size: 0.85rem; }
+.flash-li.error { color: var(--err); }
+.error-text { color: var(--err); }

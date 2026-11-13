@@ -12,6 +12,8 @@
     <strong>Crawl Lab</strong>
     <span class="muted">数据工程基线 · 采集任务编排</span>
     {% if session.get('user') %}
+    <a class="navlink" href="{{ url_for('jobs.list_jobs') }}">任务</a>
+    <a class="navlink" href="{{ url_for('jobs.settings_view') }}">急件设置</a>
     <form class="logout" method="post" action="{{ url_for('auth.logout') }}">
       <span>{{ session.user }}</span>
       <button type="submit">退出</button>

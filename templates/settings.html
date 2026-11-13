@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}急件设置{% endblock %}
+{% block body %}
+<p><a href="{{ url_for('jobs.list_jobs') }}">← 返回列表</a></p>
+<section class="card">
+  <h1>急件设置</h1>
+  <p class="muted">名额按后台日期结算，当日生效中的急件标记达到名额后，新指定一律失败。</p>
+  <div class="quota-bar">
+    <span class="chip">后台日期 <strong>{{ stats.date }}</strong></span>
+    <span class="chip">今日已用 <strong>{{ stats.used }}</strong> / 名额 {{ stats.quota }}</span>
+    <span class="chip">候着条数 <strong>{{ stats.waiting }}</strong></span>
+    <span class="chip">当日锁定口径 <strong>{{ stats.policy_label }}</strong></span>
+  </div>
+  <form method="post" action="{{ url_for('jobs.save_settings') }}">
+    <label>当日急件名额
+      <input type="number" name="rush_quota" min="0" value="{{ rush.quota }}" required />
+    </label>
+    <label>常件先收让路条数
+      <input type="number" name="rush_yield" min="0" value="{{ rush.yield_count }}" required />
+    </label>
+    <label>落空处理口径（登记值）
+      <select name="rush_policy">
+        {% for key, label in policies.items() %}
+        <option value="{{ key }}" {% if key == rush.policy %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <p class="muted">
+      落空处理：急件开跑一条都没入账时，<code>冻结</code> 会冻结候着区直到撤下急件标记；
+      <code>降级</code> 会让候着区改走旁路按常件继续，但写入记录打降级标记。
+      点“继续”时若当日锁定的口径与这里的登记值不一致，会被挡下并记录“处理不对”。
+    </p>
+    <button type="submit">保存设置</button>
+  </form>
+  <p class="muted">当前登录：<strong>{{ user }}</strong>（撤下急件必须由非指定人操作，可用 supervisor / 123456 演示）。</p>
+</section>
+{% endblock %}

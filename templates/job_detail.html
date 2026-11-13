@@ -5,27 +5,138 @@
 <section class="card">
   <h1>{{ job.name }}</h1>
   <p>种子 <code>{{ job.seed_path }}</code> · 状态 <span class="tag {{ job.status }}">{{ job.status }}</span></p>
-  {% if job.status == 'draft' %}
+  <div class="quota-bar">
+    <span class="chip">急件通道
+      <strong>
+        {% if rush.flag_active_today %}急件{% elif rush.run %}{{ rush.run['channel'] }}{% else %}常件{% endif %}
+      </strong>
+    </span>
+    {% if rush.run and not rush.run['landed'] %}<span class="chip warn">急件落空</span>{% endif %}
+    <span class="chip {{ 'warn' if rush.degraded else '' }}">降级标记：{{ '是' if rush.degraded else '否' }}</span>
+    {% if rush.frozen %}<span class="chip warn">候着区冻结</span>{% endif %}
+    <span class="chip">名额 {{ stats.used }}/{{ stats.quota }} · 余 {{ stats.remaining }}</span>
+    <span class="chip">当前口径 {{ stats.policy_label }}</span>
+  </div>
+
+  {% if job.status == 'draft' or job.status == 'running' %}
   <form method="post" action="{{ url_for('jobs.run_job_view', job_id=job.id) }}">
-    <button type="submit">运行采集（同步）</button>
+    <button type="submit" {% if job.status == 'running' %}disabled{% endif %}>运行采集（同步）</button>
   </form>
   {% elif job.status == 'done' %}
   <p class="muted">已完成于 {{ job.finished_at or '—' }}</p>
   {% endif %}
 </section>
+
+<section class="card">
+  <h2>急件标记</h2>
+  {% if rush.flag %}
+  <dl class="job-meta detail-meta">
+    <div><dt>状态</dt><dd><span class="tag {{ 'rush' if rush.flag['status'] == 'active' else 'normal' }}">{{ rush.flag['status'] }}</span></dd></div>
+    <div><dt>急件编码</dt><dd><code>{{ rush.flag['short_code'] }}</code></dd></div>
+    <div><dt>原因</dt><dd>{{ rush.flag['reason'] }}</dd></div>
+    <div><dt>指定人 / 日期</dt><dd>{{ rush.flag['designated_by'] }} · {{ rush.flag['rush_date'] }}</dd></div>
+    <div><dt>落空口径</dt><dd>{{ policies.get(rush.flag['fallback_policy'], rush.flag['fallback_policy']) }}</dd></div>
+    {% if rush.flag['status'] == 'withdrawn' %}
+    <div><dt>撤下</dt><dd>{{ rush.flag['withdrawn_by'] }} · {{ rush.flag['withdraw_reason'] }}</dd></div>
+    {% endif %}
+  </dl>
+  {% else %}
+  <p class="muted">本任务尚无急件标记。</p>
+  {% endif %}
+
+  {% if rush.flag and rush.flag['status'] == 'active' %}
+  <form class="inline-form" method="post" action="{{ url_for('jobs.update_rush_view', job_id=job.id) }}">
+    <label>急件编码 <input name="rush_short_code" value="{{ rush.flag['short_code'] }}" required /></label>
+    <label>急件原因 <input name="rush_reason" value="{{ rush.flag['reason'] }}" required /></label>
+    <label>落空口径
+      <select name="rush_policy">
+        {% for key, label in policies.items() %}
+        <option value="{{ key }}" {% if key == rush.flag['fallback_policy'] %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">更新急件标记</button>
+  </form>
+  <form class="inline-form" method="post" action="{{ url_for('jobs.withdraw_view', job_id=job.id) }}">
+    <label>撤下原因 <input name="withdraw_reason" placeholder="必填；不能由指定人本人撤下" /></label>
+    <button type="submit">撤下急件标记</button>
+  </form>
+  {% elif not rush.flag %}
+  <form class="inline-form" method="post" action="{{ url_for('jobs.designate_view', job_id=job.id) }}">
+    <label>急件编码 <input name="rush_short_code" placeholder="必填" required /></label>
+    <label>急件原因 <input name="rush_reason" placeholder="必填" required /></label>
+    <label>落空口径
+      <select name="rush_policy">
+        {% for key, label in policies.items() %}
+        <option value="{{ key }}" {% if key == stats.settings_policy %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">指定急件</button>
+  </form>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>候着顺序</h2>
+  <table>
+    <thead><tr><th>顺序</th><th>标题</th><th>状态</th></tr></thead>
+    <tbody>
+      {% for w in rush.waitlist %}
+      <tr>
+        <td>#{{ w['seq'] }}</td>
+        <td>{{ w['title'] }}</td>
+        <td>{{ '已继续' if w['status'] == 'continued' else '候着' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="muted">当前无候着条目</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="{{ url_for('jobs.continue_view') }}">
+    <button type="submit">继续候着区</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>争用失败原因</h2>
+  {% if rush.failure_message %}
+  <p class="flash-li error">{{ rush.failure_message }}</p>
+  {% else %}
+  <p class="muted">本任务没有名额争用失败记录。</p>
+  {% endif %}
+  {% if rush.attempts %}
+  <table>
+    <thead><tr><th>时间</th><th>操作人</th><th>编码</th><th>结果</th></tr></thead>
+    <tbody>
+      {% for a in rush.attempts %}
+      <tr>
+        <td>{{ a['created_at'] }}</td>
+        <td>{{ a['actor'] }}</td>
+        <td><code>{{ a['short_code'] }}</code></td>
+        <td>{% if a['ok'] %}成功 · {{ a['message'] }}{% else %}<span class="error-text">失败：{{ a['message'] }}</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+
 <section class="card">
   <h2>落库记录</h2>
   <table>
-    <thead><tr><th>item_key</th><th>标题</th><th>时间</th></tr></thead>
+    <thead><tr><th>item_key</th><th>标题</th><th>通道</th><th>降级</th><th>时间</th></tr></thead>
     <tbody>
       {% for r in records %}
       <tr>
         <td><code>{{ r.item_key }}</code></td>
         <td>{{ r.title }}</td>
+        <td>{{ r.channel }}</td>
+        <td>{{ '是' if r.degrade_flag else '否' }}</td>
         <td>{{ r.fetched_at }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="3" class="muted">尚无记录</td></tr>
+      <tr><td colspan="5" class="muted">尚无记录</td></tr>
       {% endfor %}
     </tbody>
   </table>

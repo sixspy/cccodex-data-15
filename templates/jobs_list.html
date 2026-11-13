@@ -1,8 +1,30 @@
 {% extends "base.html" %}
 {% block title %}任务列表{% endblock %}
 {% block body %}
-<section class="card">
+<section class="card quota-strip">
   <h1>采集任务</h1>
+  <div class="quota-bar">
+    <span class="chip">后台日期 <strong>{{ stats.date }}</strong></span>
+    <span class="chip">今日急件名额 <strong>{{ stats.quota }}</strong></span>
+    <span class="chip">今日已用 <strong>{{ stats.used }}</strong></span>
+    <span class="chip">名额余量 <strong class="{{ 'low' if stats.remaining == 0 }}">{{ stats.remaining }}</strong></span>
+    <span class="chip">候着条数 <strong>{{ stats.waiting }}</strong></span>
+    <span class="chip">当前口径 <strong>{{ stats.policy_label }}</strong></span>
+    {% if stats.frozen %}<span class="chip warn">候着区已冻结</span>{% endif %}
+    {% if stats.degraded %}<span class="chip warn">已走降级口径</span>{% endif %}
+    {% if stats.unsettled %}<span class="chip warn">开跑未收束</span>{% endif %}
+  </div>
+  {% if stats.mismatch %}<p class="flash-li error">{{ stats.mismatch }}</p>{% endif %}
+  <div class="quota-actions">
+    <form method="post" action="{{ url_for('jobs.continue_view') }}">
+      <button type="submit">继续候着区</button>
+    </form>
+    <a class="link-btn" href="{{ url_for('jobs.settings_view') }}">急件设置</a>
+  </div>
+</section>
+
+<section class="card">
+  <h2>新建任务</h2>
   <form class="grid-form" method="post" action="{{ url_for('jobs.create_job') }}">
     <label>任务名 <input name="name" placeholder="例：alpha 目录首轮" required /></label>
     <label>种子路径
@@ -13,30 +35,67 @@
       </select>
     </label>
     <button type="submit">创建任务</button>
+    <fieldset class="rush-fieldset">
+      <legend>新建时指定急件标记（不勾则按常件）</legend>
+      <label class="inline"><input type="checkbox" name="rush" value="1" /> 指定为急件</label>
+      <label>急件编码 <input name="rush_short_code" placeholder="必填，如 R-20261113-01" /></label>
+      <label>急件原因 <input name="rush_reason" placeholder="必填，说明为何加急" /></label>
+      <label>落空处理口径
+        <select name="rush_policy">
+          {% for key, label in policies.items() %}
+          <option value="{{ key }}" {% if key == stats.settings_policy %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <p class="muted">空编码或空原因会直接失败；当日名额用尽也会失败并提示名额已满。口径当日选定后禁止改口。</p>
+    </fieldset>
   </form>
 </section>
+
 <section class="card">
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th><th>名称</th><th>种子</th><th>状态</th><th>记录数</th><th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for j in jobs %}
-      <tr>
-        <td>{{ j.id }}</td>
-        <td>{{ j.name }}</td>
-        <td><code>{{ j.seed_path }}</code></td>
-        <td><span class="tag {{ j.status }}">{{ j.status }}</span></td>
-        <td>{{ counts.get(j.id, 0) }}</td>
-        <td><a href="{{ url_for('jobs.detail', job_id=j.id) }}">详情</a></td>
-      </tr>
-      {% else %}
-      <tr><td colspan="6" class="muted">尚无任务，请先创建</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <h2>列表卡片</h2>
+  <div class="job-cards">
+    {% for j in jobs %}
+    {% set flag = rush_flags.get(j.id) %}
+    {% set run = runs.get(j.id) %}
+    {% set waits = waitlists.get(j.id, []) %}
+    <article class="job-card {{ 'is-rush' if flag else 'is-normal' }}" data-job="{{ j.id }}">
+      <header>
+        <span class="job-id">#{{ j.id }}</span>
+        <strong>{{ j.name }}</strong>
+        <span class="tag {{ j.status }}">{{ j.status }}</span>
+        {% if flag %}<span class="tag rush">急件</span>{% else %}<span class="tag normal">常件</span>{% endif %}
+        {% if run and run['degrade_flag'] %}<span class="tag degrade">降级</span>{% endif %}
+        {% if stats.frozen and flag %}<span class="tag frozen">候着区冻结</span>{% endif %}
+      </header>
+      <dl class="job-meta">
+        <div><dt>种子</dt><dd><code>{{ j.seed_path }}</code></dd></div>
+        <div><dt>记录数</dt><dd>{{ counts.get(j.id, 0) }}</dd></div>
+        <div><dt>急件通道</dt><dd>
+          {% if flag %}
+            急件 · 编码 <code>{{ flag.short_code }}</code>
+          {% elif run %}
+            {{ '急件（落空）' if run['channel'] == 'rush' and not run['landed'] else '常件' }}
+          {% else %}常件（待开跑）{% endif %}
+        </dd></div>
+        <div><dt>候着顺序</dt><dd>
+          {% if waits %}
+            {% for w in waits %}
+            <span class="wait-seq {{ w.status }}">#{{ w.seq }} {{ w.title }}{% if w.status == 'continued' %}（已继续）{% endif %}</span>
+            {% endfor %}
+          {% else %}—{% endif %}
+        </dd></div>
+        <div><dt>名额余量</dt><dd>{{ stats.used }}/{{ stats.quota }} 已用 · 余 {{ stats.remaining }}</dd></div>
+        <div><dt>当前口径</dt><dd>{{ stats.policy_label }}</dd></div>
+      </dl>
+      <footer>
+        <a href="{{ url_for('jobs.detail', job_id=j.id) }}">详情</a>
+      </footer>
+    </article>
+    {% else %}
+    <p class="muted">尚无任务，请先创建</p>
+    {% endfor %}
+  </div>
 </section>
 <p class="muted">Mock 站点可在新标签打开：
   <a href="{{ url_for('mock.catalog', catalog_id='alpha') }}" target="_blank">alpha</a>
